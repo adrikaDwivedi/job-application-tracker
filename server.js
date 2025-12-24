@@ -88,9 +88,11 @@ app.delete('/api/applications/:id', (req, res) => {
 });
 
 // ✅ FIXED catch-all (React Router support)
-app.get('/*', (req, res) => {
+// Serve React app for all non-API routes
+app.use((req, res) => {
   res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
 });
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
