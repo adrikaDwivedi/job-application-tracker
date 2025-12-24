@@ -1,13 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Briefcase, Calendar, Plus, X } from 'lucide-react';
 import './App.css';
 
+const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:3001/api';
+
 function App() {
-  const [applications, setApplications] = useState([
-    { id: 1, company: 'Google', position: 'Software Engineer', status: 'applied', dateApplied: '2025-12-20' },
-    { id: 2, company: 'Meta', position: 'Product Manager', status: 'interview', dateApplied: '2025-12-18' },
-  ]);
-  
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     company: '',
@@ -23,30 +22,76 @@ function App() {
     rejected: { label: 'Rejected' },
   };
 
-  const addApplication = () => {
-    if (formData.company.trim() && formData.position.trim()) {
-      setApplications([...applications, {
-        id: Date.now(),
-        ...formData
-      }]);
-      setFormData({
-        company: '',
-        position: '',
-        status: 'applied',
-        dateApplied: new Date().toISOString().split('T')[0]
-      });
-      setShowForm(false);
+  // Fetch applications on load
+  useEffect(() => {
+    fetchApplications();
+  }, []);
+
+  const fetchApplications = async () => {
+    try {
+      const response = await fetch(`${API_URL}/applications`);
+      const data = await response.json();
+      setApplications(data);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+      alert('Failed to load applications. Make sure the server is running!');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateStatus = (id, newStatus) => {
-    setApplications(applications.map(app => 
-      app.id === id ? { ...app, status: newStatus } : app
-    ));
+  const addApplication = async () => {
+    if (formData.company.trim() && formData.position.trim()) {
+      try {
+        const response = await fetch(`${API_URL}/applications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        const newApp = await response.json();
+        setApplications([newApp, ...applications]);
+        setFormData({
+          company: '',
+          position: '',
+          status: 'applied',
+          dateApplied: new Date().toISOString().split('T')[0]
+        });
+        setShowForm(false);
+      } catch (error) {
+        console.error('Error adding application:', error);
+        alert('Failed to add application');
+      }
+    }
   };
 
-  const deleteApplication = (id) => {
-    setApplications(applications.filter(app => app.id !== id));
+  const updateStatus = async (id, newStatus) => {
+    try {
+      await fetch(`${API_URL}/applications/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      setApplications(applications.map(app => 
+        app.id === id ? { ...app, status: newStatus } : app
+      ));
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status');
+    }
+  };
+
+  const deleteApplication = async (id) => {
+    if (confirm('Are you sure you want to delete this application?')) {
+      try {
+        await fetch(`${API_URL}/applications/${id}`, {
+          method: 'DELETE'
+        });
+        setApplications(applications.filter(app => app.id !== id));
+      } catch (error) {
+        console.error('Error deleting application:', error);
+        alert('Failed to delete application');
+      }
+    }
   };
 
   const statusCounts = {
@@ -56,9 +101,13 @@ function App() {
     rejected: applications.filter(a => a.status === 'rejected').length,
   };
 
-  const sortedApplications = [...applications].sort((a, b) => 
-    new Date(b.dateApplied) - new Date(a.dateApplied)
-  );
+  if (loading) {
+    return (
+      <div className="app-container">
+        <div className="loading">Loading applications...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -154,7 +203,7 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {sortedApplications.map((app) => (
+            {applications.map((app) => (
               <tr key={app.id}>
                 <td>
                   <div className="company-name">{app.company}</div>
@@ -203,7 +252,7 @@ function App() {
 
       <div className="tip-card">
         <h3>💡 Pro Tip</h3>
-        <p>Update statuses as you hear back! Seeing your progress helps beat procrastination and keeps momentum going.</p>
+        <p>Your data is saved automatically! Close and reopen anytime - your applications will be here.</p>
       </div>
     </div>
   );

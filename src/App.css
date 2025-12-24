@@ -309,6 +309,12 @@ td {
   font-size: 13px;
   color: #4338ca;
 }
+.loading {
+  text-align: center;
+  padding: 48px;
+  font-size: 18px;
+  color: #6b7280;
+}
 
 @media (max-width: 768px) {
   .stats-grid {
